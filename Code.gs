@@ -4,7 +4,7 @@
  * 1) غيّر ADMIN_NAME و ADMIN_CODE تحت  2) شغّل setup() مرة واحدة  3) Deploy > Web app
  */
 const ADMIN_NAME = 'المدير';
-const ADMIN_CODE = 'غيّر-الكود-ده-123456'; // كود دخول الأدمن (بيتخزن مشفّر SHA-256)
+const ADMIN_CODE = 'Hamsa2026Admin'; // كود دخول الأدمن (غيّره - بيتخزن مشفّر SHA-256)
 
 const SCHEMA = {
   Groups: ['id','name','platform','url','gov_id','area_id','sub_area','category','description','added_by','created_at','updated_at','verification','status','notes','members','is_demo'],
@@ -166,4 +166,14 @@ function stats() {
     pending:g.filter(x=>x.verification==='pending').length, broken:g.filter(x=>x.status==='broken').length,
     areas: rows('Areas').length, govs: 27,
     recent: g.slice(-5).reverse().map(x=>({id:x.id,name:x.name,platform:x.platform,added_by:x.added_by}))};
+}
+
+/* ---------- لو الكود بيطلع غلط: غيّر الكود هنا وشغّل الدالة دي ---------- */
+function resetAdminCode() {
+  const code = 'Hamsa2026Admin';   // اكتب الكود الجديد هنا (يفضل حروف إنجليزي وأرقام)
+  const sh = sheet('Employees');
+  const v = sh.getDataRange().getValues();
+  const i = v.findIndex((r, n) => n > 0 && r[2] === 'admin');
+  if (i < 0) { sh.appendRow(['e1', 'المدير', 'admin', hash(code), true]); }
+  else { sh.getRange(i + 1, 4).setValue(hash(code)); sh.getRange(i + 1, 5).setValue(true); }
 }
