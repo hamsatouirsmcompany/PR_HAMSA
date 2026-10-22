@@ -83,7 +83,7 @@ function doGet(){ return out({ok:true, msg:'Hamsa Social Groups API'}); }
 
 function doPost(e) {
   let req; try { req = JSON.parse(e.postData.contents); } catch(x){ return out({ok:false,error:'طلب غير صالح'}); }
-  const emp = rows('Employees').find(x => x.active === true && x.code_hash === hash(String(req.code||'')));
+  const emp = rows('Employees').find(x => String(x.active).toUpperCase() === 'TRUE' && String(x.code_hash).trim() === hash(String(req.code||'').trim()));
   if (!emp) return out({ok:false, error:'كود الدخول غير صحيح', auth:false}); // التحقق على السيرفر
   const isAdmin = emp.role === 'admin';
   const lock = LockService.getScriptLock();
@@ -176,4 +176,17 @@ function resetAdminCode() {
   const i = v.findIndex((r, n) => n > 0 && r[2] === 'admin');
   if (i < 0) { sh.appendRow(['e1', 'المدير', 'admin', hash(code), true]); }
   else { sh.getRange(i + 1, 4).setValue(hash(code)); sh.getRange(i + 1, 5).setValue(true); }
+}
+
+/* ---------- تشخيص: شغّل الدالة دي وبعدين افتح Execution log ---------- */
+function diagnose() {
+  const code = 'Hamsa2026Admin';  // نفس الكود اللي بتكتبه في الموقع
+  const sh = SpreadsheetApp.getActive().getSheetByName('Employees');
+  if (!sh) { Logger.log('❌ مفيش شيت Employees - شغّل setup'); return; }
+  const list = rows('Employees');
+  Logger.log('عدد الموظفين: ' + list.length);
+  list.forEach(x => Logger.log(x.name + ' | role=' + x.role + ' | active=' + x.active + ' | hash=' + String(x.code_hash).slice(0,12) + '...'));
+  Logger.log('الهاش المتوقع للكود: ' + hash(code).slice(0,12) + '...');
+  const ok = list.some(x => String(x.active).toUpperCase()==='TRUE' && String(x.code_hash).trim()===hash(code));
+  Logger.log(ok ? '✅ الكود صحيح في الشيت - المشكلة في الـ Deploy أو رابط الـ API' : '❌ الكود مش مطابق - شغّل resetAdminCode');
 }
