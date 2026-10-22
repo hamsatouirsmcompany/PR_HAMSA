@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>همسة - مجموعات السوشيال</title>
+<style>
+:root{--b:#1f4e9c;--bd:#163a75;--g:#f5c518;--bg:#f4f6fb;--t:#1b2433;--m:#6b7587;--ok:#1e8e4e;--er:#c0392b}
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--t)}
+header{background:var(--b);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5;border-bottom:4px solid var(--g)}
+header img{height:42px;background:#fff;border-radius:8px;padding:2px}header h1{font-size:17px;margin:0;flex:1}
+nav{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;background:#fff;border-bottom:1px solid #e3e8f2}
+nav button,.btn{border:0;border-radius:8px;padding:8px 14px;background:#eaf0fb;color:var(--bd);cursor:pointer;font:inherit;white-space:nowrap}
+nav button.on,.btn.p{background:var(--b);color:#fff}.btn.g{background:var(--g);color:#222}.btn.d{background:#fdecea;color:var(--er)}.btn.s{padding:5px 9px;font-size:13px}
+main{max-width:1100px;margin:auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px #0001}
+.card.click{cursor:pointer;border-top:3px solid var(--g)}.card.click:hover{transform:translateY(-2px)}
+.num{font-size:26px;font-weight:700;color:var(--b)}.mut{color:var(--m);font-size:13px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}input,select,textarea{padding:9px;border:1px solid #cfd7e6;border-radius:8px;font:inherit;background:#fff;max-width:100%}
+textarea{width:100%}.bar input{flex:1;min-width:180px}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;background:#eaf0fb;color:var(--bd)}
+.tag.ok{background:#e3f6ea;color:var(--ok)}.tag.bad{background:#fdecea;color:var(--er)}.tag.w{background:#fff6d6;color:#8a6d00}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:12px;z-index:20}
+.box{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:520px;max-height:92vh;overflow:auto}
+.box label{display:block;margin:10px 0 4px;font-size:14px}.box input,.box select{width:100%}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:10px;color:#fff;z-index:30;display:none}
+.crumb{color:var(--m);margin-bottom:8px;font-size:14px}.crumb a{color:var(--b);cursor:pointer}
+.login{max-width:340px;margin:12vh auto;text-align:center}.login input{width:100%;margin:12px 0}
+.hide{display:none!important}.spin{text-align:center;padding:30px;color:var(--m)}
+</style>
+</head>
+<body>
+<div id="login" class="login card">
+  <img src="logo.png" alt="همسة" style="width:200px"><h2>دخول الموظفين</h2>
+  <input id="code" type="password" placeholder="كود الدخول" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn p" style="width:100%" onclick="doLogin()">دخول</button><p id="lerr" style="color:var(--er)"></p>
+</div>
+
+<div id="app" class="hide">
+<header><img src="logo.png" alt=""><h1>مجموعات السوشيال - همسة للسياحة</h1><span id="who"></span><button class="btn g s" onclick="openForm()">+ إضافة مجموعة</button><button class="btn s" onclick="logout()">خروج</button></header>
+<nav id="nav"></nav>
+<main id="view"></main>
+</div>
+<div id="toast"></div>
+
+<script>
+// ====== غيّر السطر ده بعد ما تعمل Deploy للـ Apps Script ======
+const API = 'PUT_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+// ===============================================================
+const PL = {facebook:'فيسبوك',whatsapp:'واتساب',telegram:'تيليجرام',instagram:'إنستجرام',tiktok:'تيك توك',youtube:'يوتيوب',other:'أخرى'};
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S = {code:sessionStorage.getItem('hc')||'', user:null, govs:[], areas:[], cats:[], stats:{}, f:{page:1,sort:'newest'}};
+
+function toast(m, ok=true){const t=$('#toast');t.textContent=m;t.style.background=ok?'var(--ok)':'var(--er)';t.style.display='block';setTimeout(()=>t.style.display='none',3500);}
+async function api(action, extra={}){
+  try{
+    const r = await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,code:S.code,...extra})});
+    const j = await r.json(); if(j.auth===false){logout();} return j;
+  }catch(e){return {ok:false,error:'تعذر الاتصال بالسيرفر. تأكد من النت وحاول تاني.'};}
+}
+async function doLogin(){
+  S.code=$('#code').value.trim(); $('#lerr').textContent='';
+  const r = await api('bootstrap'); if(!r.ok){$('#lerr').textContent=r.error;return;}
+  sessionStorage.setItem('hc',S.code); init(r);
+}
+function logout(){sessionStorage.removeItem('hc');S.code='';location.reload();}
+function init(r){
+  Object.assign(S,{user:r.user,govs:r.govs,areas:r.areas,cats:r.cats,stats:r.stats});
+  $('#login').classList.add('hide');$('#app').classList.remove('hide');$('#who').textContent=r.user.name;
+  const tabs=[['dash','الرئيسية'],['govs','المحافظات'],['groups','كل المجموعات']]; if(r.user.role==='admin')tabs.push(['log','سجل النشاط']);
+  $('#nav').innerHTML=tabs.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')">${t[1]}</button>`).join('');
+  go('dash');
+}
+function go(t,opt){
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  if(t==='dash')dash(); if(t==='govs')govsPage(); if(t==='groups'){if(opt)S.f=Object.assign({page:1,sort:'newest'},opt);groupsPage();} if(t==='log')logPage();
+}
+const gname = id => (S.govs.find(g=>g.id===id)||{}).name_ar||'';
+const aname = id => (S.areas.find(a=>a.id===id)||{}).name_ar||'';
+
+function dash(){
+  const s=S.stats, p=s.byPlatform||{};
+  const c=(n,l)=>`<div class="card"><div class="num">${n||0}</div><div class="mut">${l}</div></div>`;
+  $('#view').innerHTML=`<div class="bar"><input id="q" placeholder="بحث سريع (اسم، رابط، منطقة...)" onkeydown="if(event.key==='Enter')go('groups',{q:this.value,page:1,sort:'newest'})"><button class="btn p" onclick="go('groups',{q:$('#q').value,page:1,sort:'newest'})">بحث</button></div>
+  <div class="grid">${c(s.total,'إجمالي المجموعات')}${c(s.govs,'محافظات')}${c(s.areas,'مناطق مسجلة')}${c(s.today,'أضيف اليوم')}
+  ${c(p.facebook,'فيسبوك')}${c(p.whatsapp,'واتساب')}${c(p.telegram,'تيليجرام')}${c(p.instagram,'إنستجرام')}${c(s.pending,'في انتظار التوثيق')}${c(s.broken,'روابط معطلة')}</div>
+  <h3>آخر الإضافات</h3><div class="card">${(s.recent||[]).map(x=>`<div>${esc(x.name)} <span class="tag">${PL[x.platform]||''}</span> <span class="mut">- ${esc(x.added_by)}</span></div>`).join('')||'<span class="mut">لا توجد بيانات بعد</span>'}</div>
+  <h3>حسب الموظف</h3><div class="card">${Object.entries(s.byEmployee||{}).map(([k,v])=>`<div>${esc(k)}: <b>${v}</b></div>`).join('')||'<span class="mut">-</span>'}</div>`;
+}
+function govsPage(){
+  $('#view').innerHTML=`<div class="crumb">مصر</div><div class="grid">${S.govs.map(g=>`<div class="card click" onclick="areasPage('${g.id}')"><b>${esc(g.name_ar)}</b><div class="mut">${S.areas.filter(a=>a.gov_id===g.id).length} منطقة</div></div>`).join('')}</div>`;
+}
+function areasPage(gid){
+  const as=S.areas.filter(a=>a.gov_id===gid&&!a.parent_id);
+  const kids=p=>S.areas.filter(a=>a.parent_id===p);
+  $('#view').innerHTML=`<div class="crumb"><a onclick="govsPage()">مصر</a> › ${esc(gname(gid))}</div>
+  <button class="btn g s" onclick="go('groups',{gov_id:'${gid}',page:1,sort:'newest'})">كل مجموعات ${esc(gname(gid))}</button>
+  ${S.user.role==='admin'?`<button class="btn s" onclick="addArea('${gid}')">+ منطقة</button>`:''}
+  <p class="mut">⚠ بيانات المناطق مبدئية وغير مكتملة وبتتوسع بالإضافة أو الاستيراد.</p>
+  <div class="grid">${as.map(a=>`<div class="card click" onclick="go('groups',{gov_id:'${gid}',area_id:'${a.id}',page:1,sort:'newest'})"><b>${esc(a.name_ar)}</b><div class="mut">${esc(a.type)}</div>${kids(a.id).map(k=>`<span class="tag" onclick="event.stopPropagation();go('groups',{gov_id:'${gid}',area_id:'${k.id}',page:1,sort:'newest'})">${esc(k.name_ar)}</span> `).join('')}</div>`).join('')||'<div class="card mut">لا توجد مناطق مسجلة لهذه المحافظة بعد.</div>'}</div>`;
+}
+async function addArea(gid){
+  const n=prompt('اسم المنطقة بالعربي:'); if(!n)return;
+  const r=await api('addArea',{data:{gov_id:gid,name_ar:n}}); if(!r.ok)return toast(r.error,false);
+  S.areas.push({id:r.id,gov_id:gid,parent_id:'',name_ar:n,type:'حي'}); toast('تمت الإضافة'); areasPage(gid);
+}
+const opts=(arr,k,v,sel)=>arr.map(x=>`<option value="${esc(x[k])}" ${x[k]===sel?'selected':''}>${esc(x[v])}</option>`).join('');
+async function groupsPage(){
+  const f=S.f;
+  $('#view').innerHTML=`<div class="bar">
+   <input id="fq" placeholder="بحث..." value="${esc(f.q||'')}">
+   <select id="fg"><option value="">كل المحافظات</option>${opts(S.govs,'id','name_ar',f.gov_id)}</select>
+   <select id="fa"><option value="">كل المناطق</option>${opts(S.areas.filter(a=>!f.gov_id||a.gov_id===f.gov_id),'id','name_ar',f.area_id)}</select>
+   <select id="fp"><option value="">كل المنصات</option>${Object.entries(PL).map(([k,v])=>`<option value="${k}" ${f.platform===k?'selected':''}>${v}</option>`).join('')}</select>
+   <select id="fs"><option value="">كل الحالات</option><option value="active" ${f.status==='active'?'selected':''}>نشط</option><option value="inactive" ${f.status==='inactive'?'selected':''}>غير نشط</option><option value="broken" ${f.status==='broken'?'selected':''}>معطل</option></select>
+   <select id="fo"><option value="newest">الأحدث</option><option value="oldest" ${f.sort==='oldest'?'selected':''}>الأقدم</option><option value="name" ${f.sort==='name'?'selected':''}>الاسم</option><option value="updated" ${f.sort==='updated'?'selected':''}>آخر تحديث</option></select>
+   <button class="btn p" onclick="applyF()">تطبيق</button><button class="btn" onclick="exportCsv()">تصدير CSV</button></div>
+   <div id="gl" class="spin">جاري التحميل...</div>`;
+  $('#fg').onchange=()=>{S.f.gov_id=$('#fg').value;S.f.area_id='';groupsPage();};
+  const r=await api('groups',f); if(!r.ok){$('#gl').innerHTML=`${esc(r.error)} <button class="btn s" onclick="groupsPage()">إعادة المحاولة</button>`;return;}
+  S.list=r.items; const pages=Math.ceil(r.total/r.size);
+  $('#gl').className='';$('#gl').innerHTML=`<div class="mut">${r.total} نتيجة</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr))">${r.items.map(card).join('')||'<div class="card mut">لا توجد نتائج.</div>'}</div>
+   <div class="bar">${r.page>1?`<button class="btn s" onclick="pg(${r.page-1})">السابق</button>`:''}<span class="mut">صفحة ${r.page} من ${pages||1}</span>${r.page<pages?`<button class="btn s" onclick="pg(${r.page+1})">التالي</button>`:''}</div>`;
+}
+function applyF(){S.f={q:$('#fq').value,gov_id:$('#fg').value,area_id:$('#fa').value,platform:$('#fp').value,status:$('#fs').value,sort:$('#fo').value,page:1};groupsPage();}
+function pg(n){S.f.page=n;groupsPage();}
+function card(g){
+  const st=g.status==='active'?'<span class="tag ok">نشط</span>':g.status==='broken'?'<span class="tag bad">معطل</span>':'<span class="tag w">غير نشط</span>';
+  const vf=g.verification==='verified'?'<span class="tag ok">موثق</span>':'<span class="tag w">بانتظار التوثيق</span>';
+  return `<div class="card"><b>${esc(g.name)}</b><div style="margin:6px 0"><span class="tag">${PL[g.platform]||g.platform}</span> ${st} ${vf}</div>
+  <div class="mut">${esc(gname(g.gov_id))} › ${esc(aname(g.area_id))} ${esc(g.sub_area)}</div><div class="mut">${esc(g.category)} · أضافه ${esc(g.added_by)}</div>
+  <div class="acts"><a class="btn p s" href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">فتح</a><button class="btn s" onclick="copy('${esc(g.url)}')">نسخ</button>
+  <button class="btn s" onclick="details('${g.id}')">تفاصيل</button><button class="btn s" onclick="setSt('${g.id}','${g.status==='active'?'inactive':'active'}')">${g.status==='active'?'تعطيل':'تفعيل'}</button>
+  <button class="btn s d" onclick="setSt('${g.id}','broken',1)">رابط معطل</button>
+  ${S.user.role==='admin'?`<button class="btn s g" onclick="verify('${g.id}')">توثيق</button><button class="btn s d" onclick="del('${g.id}')">حذف</button>`:''}</div></div>`;
+}
+const copy=u=>navigator.clipboard.writeText(u).then(()=>toast('تم نسخ الرابط'));
+function details(id){const g=S.list.find(x=>x.id===id);modal(`<h3>${esc(g.name)}</h3><p>${esc(g.description)||'—'}</p><p class="mut">ملاحظات: ${esc(g.notes)||'—'}<br>الأعضاء: ${esc(g.members)||'—'}<br>أُضيفت: ${esc(g.created_at)}<br>آخر تحديث: ${esc(g.updated_at)}<br>ID: ${g.id}</p><button class="btn" onclick="closeM()">إغلاق</button>`);}
+async function setSt(id,status,rep){const r=await api(rep?'reportBroken':'setStatus',{id,patch:{status}});if(!r.ok)return toast(r.error,false);toast('تم التحديث');S.stats=r.stats;groupsPage();}
+async function verify(id){const r=await api('setStatus',{id,patch:{verification:'verified'}});if(!r.ok)return toast(r.error,false);toast('تم التوثيق');groupsPage();}
+async function del(id){if(!confirm('متأكد من الحذف؟ لا يمكن التراجع.'))return;const r=await api('deleteGroup',{id});if(!r.ok)return toast(r.error,false);toast('تم الحذف');S.stats=r.stats;groupsPage();}
+function modal(h){closeM();const d=document.createElement('div');d.className='modal';d.id='m';d.innerHTML=`<div class="box">${h}</div>`;document.body.appendChild(d);}
+function closeM(){const m=$('#m');if(m)m.remove();}
+let draft={};
+function openForm(){
+  const d=draft;
+  modal(`<h3>إضافة مجموعة</h3>
+  <label>اسم المجموعة *</label><input id="n" value="${esc(d.name)}">
+  <label>الرابط *</label><input id="u" dir="ltr" value="${esc(d.url)}" placeholder="https://...">
+  <label>المنصة (اختياري - بتتحدد من الرابط)</label><select id="pl"><option value="">تلقائي</option>${Object.entries(PL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+  <label>المحافظة *</label><select id="g"><option value="">اختر</option>${opts(S.govs,'id','name_ar',d.gov_id)}</select>
+  <label>المنطقة</label><select id="a"></select>
+  <label>الحي / القرية</label><input id="sa" value="${esc(d.sub_area)}">
+  <label>التصنيف</label><select id="c"><option value="">-</option>${opts(S.cats,'name_ar','name_ar',d.category)}</select>
+  <label>وصف</label><textarea id="ds">${esc(d.description)}</textarea>
+  <label>ملاحظات</label><input id="nt" value="${esc(d.notes)}"><label>عدد الأعضاء التقريبي</label><input id="mb" type="number" value="${esc(d.members)}">
+  <p id="ferr" style="color:var(--er)"></p>
+  <button class="btn p" id="sv" onclick="save()">حفظ</button> <button class="btn" onclick="closeM()">إلغاء</button>`);
+  const fill=()=>{$('#a').innerHTML='<option value="">-</option>'+opts(S.areas.filter(x=>x.gov_id===$('#g').value),'id','name_ar',d.area_id);};
+  $('#g').onchange=fill; fill();
+}
+async function save(){
+  draft={name:$('#n').value.trim(),url:$('#u').value.trim(),platform:$('#pl').value,gov_id:$('#g').value,area_id:$('#a').value,sub_area:$('#sa').value,category:$('#c').value,description:$('#ds').value,notes:$('#nt').value,members:$('#mb').value};
+  if(!draft.name||!draft.url||!draft.gov_id){$('#ferr').textContent='الاسم والرابط والمحافظة مطلوبين';return;}
+  $('#sv').disabled=true;$('#sv').textContent='جاري الحفظ...';
+  const r=await api('addGroup',{data:draft});
+  if(!r.ok){$('#ferr').textContent=r.error;$('#sv').disabled=false;$('#sv').textContent='حفظ / إعادة المحاولة';return;} // البيانات محفوظة في الفورم
+  draft={};closeM();S.stats=r.stats;toast('تم الحفظ في الجدول');if($('#nav .on').dataset.t==='dash')dash();else groupsPage();
+}
+async function exportCsv(){
+  const r=await api('groups',Object.assign({},S.f,{page:1})); if(!r.ok)return toast(r.error,false);
+  const cols=['id','name','platform','url','status','verification','category','added_by','created_at'];
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const csv='\ufeff'+[cols.join(',')].concat(r.items.map(g=>cols.map(c=>q(g[c])).join(','))).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='groups.csv';a.click();
+}
+async function logPage(){
+  $('#view').innerHTML='<div class="spin">جاري التحميل...</div>';const r=await api('activity');
+  if(!r.ok){$('#view').innerHTML=esc(r.error);return;}
+  $('#view').innerHTML=`<div class="card" style="overflow:auto"><table width="100%" cellpadding="6">${r.items.map(i=>`<tr><td class="mut">${esc(i.time)}</td><td>${esc(i.employee)}</td><td>${esc(i.action)}</td><td>${esc(i.target)}</td></tr>`).join('')}</table></div>`;
+}
+if(S.code)api('bootstrap').then(r=>r.ok?init(r):0);
+</script>
+</body>
+</html>
