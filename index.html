@@ -70,13 +70,13 @@ function logout(){sessionStorage.removeItem('hc');S.code='';location.reload();}
 function init(r){
   Object.assign(S,{user:r.user,govs:r.govs,areas:r.areas,cats:r.cats,stats:r.stats});
   $('#login').classList.add('hide');$('#app').classList.remove('hide');$('#who').textContent=r.user.name;
-  const tabs=[['dash','الرئيسية'],['govs','المحافظات'],['groups','كل المجموعات']]; if(r.user.role==='admin')tabs.push(['log','سجل النشاط']);
+  const tabs=[['dash','الرئيسية'],['govs','المحافظات'],['groups','كل المجموعات'],['ai','🤖 المساعد الذكي']]; if(r.user.role==='admin')tabs.push(['log','سجل النشاط']);
   $('#nav').innerHTML=tabs.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')">${t[1]}</button>`).join('');
   go('dash');
 }
 function go(t,opt){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  if(t==='dash')dash(); if(t==='govs')govsPage(); if(t==='groups'){if(opt)S.f=Object.assign({page:1,sort:'newest'},opt);groupsPage();} if(t==='log')logPage();
+  if(t==='dash')dash(); if(t==='govs')govsPage(); if(t==='groups'){if(opt)S.f=Object.assign({page:1,sort:'newest'},opt);groupsPage();} if(t==='log')logPage(); if(t==='ai')aiPage();
 }
 const gname = id => (S.govs.find(g=>g.id===id)||{}).name_ar||'';
 const aname = id => (S.areas.find(a=>a.id===id)||{}).name_ar||'';
@@ -206,6 +206,36 @@ async function runBulk(){
   $('#bmsg').innerHTML=`<b style="color:var(--ok)">تمت إضافة ${add}</b> · مكرر ${dup} · مرفوض ${bad}`;
   $('#bt').value='';$('#bgo').disabled=false;
   const on=$('#nav .on'); if(on&&on.dataset.t==='dash')dash();
+}
+
+S.chat=[];
+const fmtMsg=t=>esc(t).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+function aiPage(){
+  const chips=['كام جروب عندنا؟ وإيه المطلوب النهاردة؟','اعرض جروبات الإسكندرية','الجروبات اللي من غير منطقة','عايز جروبات حج وعمرة في الشرقية','الصق قايمة روابط وأنا أضيفها'];
+  $('#view').innerHTML=`<div class="card"><div class="mut">اسأل أو اطلب أي حاجة: بحث في الجروبات، إحصائيات، أو الصق نص فيه روابط وأنا أضيفها. أنا مش بتصفح فيسبوك ومبألفش روابط.</div>
+  <div class="acts">${chips.map(c=>`<button class="btn s" onclick="aiQuick(this.textContent)">${esc(c)}</button>`).join('')}</div>
+  <div id="chat" style="margin:12px 0;max-height:55vh;overflow:auto"></div>
+  <div class="bar" style="margin-bottom:0"><textarea id="ai_in" rows="2" placeholder="اكتب طلبك... (Enter للإرسال، Shift+Enter سطر جديد)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"></textarea><button class="btn p" id="ai_go" onclick="aiSend()">إرسال</button></div></div>`;
+  renderChat();
+}
+function renderChat(){
+  const c=$('#chat'); if(!c)return;
+  c.innerHTML=S.chat.map(m=>`<div style="margin:8px 0;padding:10px 12px;border-radius:10px;background:${m.role==='user'?'#eaf0fb':m.err?'#fdecea':'#f6f7fa'};${m.tmp?'color:var(--m)':''}"><b class="mut">${m.role==='user'?'أنت':'المساعد'}</b><div>${fmtMsg(m.content)}</div></div>`).join('');
+  c.scrollTop=c.scrollHeight;
+}
+function aiQuick(t){const i=$('#ai_in');if(i){i.value=t;aiSend();}}
+async function aiSend(){
+  const i=$('#ai_in'); const text=i.value.trim(); if(!text||$('#ai_go').disabled)return;
+  i.value=''; S.chat.push({role:'user',content:text}); S.chat.push({role:'assistant',content:'جاري التفكير...',tmp:true}); renderChat(); $('#ai_go').disabled=true;
+  const hist=S.chat.filter(m=>!m.tmp&&!m.err).map(m=>({role:m.role,content:m.content}));
+  const r=await api('ai',{messages:hist});
+  S.chat=S.chat.filter(m=>!m.tmp);
+  if(!r.ok) S.chat.push({role:'assistant',content:r.error||'حصل خطأ',err:true});
+  else {
+    S.chat.push({role:'assistant',content:r.reply});
+    if((r.actions||[]).some(a=>a.tool==='add_groups'&&a.result&&a.result.added>0)){ const b=await api('bootstrap'); if(b.ok){S.govs=b.govs;S.areas=b.areas;S.stats=b.stats;} toast('تمت الإضافة'); }
+  }
+  renderChat(); const g=$('#ai_go'); if(g)g.disabled=false;
 }
 async function exportCsv(){
   const r=await api('groups',Object.assign({},S.f,{page:1,all:true})); if(!r.ok)return toast(r.error,false);
