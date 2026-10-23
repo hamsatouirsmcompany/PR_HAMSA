@@ -39,7 +39,7 @@ textarea{width:100%}.bar input{flex:1;min-width:180px}
 </div>
 
 <div id="app" class="hide">
-<header><img src="logo.png" alt=""><h1>مجموعات السوشيال - همسة للسياحة</h1><span id="who"></span><button class="btn g s" onclick="openForm()">+ إضافة مجموعة</button><button class="btn s" onclick="logout()">خروج</button></header>
+<header><img src="logo.png" alt=""><h1>مجموعات السوشيال - همسة للسياحة</h1><span id="who"></span><button class="btn g s" onclick="openForm()">+ إضافة مجموعة</button><button class="btn s" onclick="openBulk()">+ إضافة جماعية</button><button class="btn s" onclick="logout()">خروج</button></header>
 <nav id="nav"></nav>
 <main id="view"></main>
 </div>
@@ -113,7 +113,7 @@ async function groupsPage(){
   $('#view').innerHTML=`<div class="bar">
    <input id="fq" placeholder="بحث..." value="${esc(f.q||'')}">
    <select id="fg"><option value="">كل المحافظات</option>${opts(S.govs,'id','name_ar',f.gov_id)}</select>
-   <select id="fa"><option value="">كل المناطق</option>${opts(S.areas.filter(a=>!f.gov_id||a.gov_id===f.gov_id),'id','name_ar',f.area_id)}</select>
+   <select id="fa"><option value="">كل المناطق</option><option value="__none" ${f.area_id==='__none'?'selected':''}>بدون منطقة</option>${opts(S.areas.filter(a=>!f.gov_id||a.gov_id===f.gov_id),'id','name_ar',f.area_id)}</select>
    <select id="fp"><option value="">كل المنصات</option>${Object.entries(PL).map(([k,v])=>`<option value="${k}" ${f.platform===k?'selected':''}>${v}</option>`).join('')}</select>
    <select id="fs"><option value="">كل الحالات</option><option value="active" ${f.status==='active'?'selected':''}>نشط</option><option value="inactive" ${f.status==='inactive'?'selected':''}>غير نشط</option><option value="broken" ${f.status==='broken'?'selected':''}>معطل</option></select>
    <select id="fo"><option value="newest">الأحدث</option><option value="oldest" ${f.sort==='oldest'?'selected':''}>الأقدم</option><option value="name" ${f.sort==='name'?'selected':''}>الاسم</option><option value="updated" ${f.sort==='updated'?'selected':''}>آخر تحديث</option></select>
@@ -170,9 +170,46 @@ async function save(){
   if(!r.ok){$('#ferr').textContent=r.error;$('#sv').disabled=false;$('#sv').textContent='حفظ / إعادة المحاولة';return;} // البيانات محفوظة في الفورم
   draft={};closeM();S.stats=r.stats;toast('تم الحفظ في الجدول');if($('#nav .on').dataset.t==='dash')dash();else groupsPage();
 }
+
+function parseBulk(text){
+  const out=[];
+  String(text||'').split(/\n+/).forEach(line=>{
+    const m=line.match(/https?:\/\/[^\s|,،؛]+/i); if(!m)return;
+    const url=m[0].replace(/[)\]>.,]+$/,'');
+    const name=line.replace(m[0],'').trim().replace(/^[|\t,،؛\-–—:\s]+|[|\t,،؛\-–—:\s]+$/g,'');
+    out.push({name,url});
+  });
+  return out;
+}
+function openBulk(){
+  modal(`<h3>إضافة جماعية</h3>
+  <p class="mut">الصق الروابط، كل رابط في سطر. ممكن تكتب الاسم قبل الرابط (مثال: <span dir="ltr">سوق المنصورة | https://facebook.com/groups/123</span>) أو الروابط بس. المكرر بيتخطى لوحده.</p>
+  <textarea id="bt" rows="10" dir="auto" placeholder="https://www.facebook.com/groups/...&#10;اسم الجروب | https://www.facebook.com/groups/..."></textarea>
+  <label>المحافظة (لو مش معروفة سيبها "عام")</label><select id="bg"><option value="">بدون محافظة (عام)</option>${opts(S.govs,'id','name_ar','')}</select>
+  <label>المنطقة (اختياري)</label><select id="ba"><option value="">بدون منطقة</option></select>
+  <label>التصنيف</label><select id="bc"><option value="">-</option>${opts(S.cats,'name_ar','name_ar','')}</select>
+  <p id="bmsg" class="mut"></p>
+  <button class="btn p" id="bgo" onclick="runBulk()">إضافة</button> <button class="btn" onclick="closeM()">إغلاق</button>`);
+  $('#bg').onchange=()=>{$('#ba').innerHTML='<option value="">بدون منطقة</option>'+opts(S.areas.filter(x=>x.gov_id===$('#bg').value),'id','name_ar','');};
+}
+async function runBulk(){
+  const rows=parseBulk($('#bt').value); if(!rows.length){$('#bmsg').textContent='مفيش روابط صالحة في النص';return;}
+  const meta={gov_id:$('#bg').value,area_id:$('#ba').value,category:$('#bc').value};
+  $('#bgo').disabled=true; let add=0,dup=0,bad=0;
+  for(let i=0;i<rows.length;i+=200){
+    $('#bmsg').textContent=`جاري الإضافة... ${Math.min(i+200,rows.length)} / ${rows.length}`;
+    const r=await api('bulkAdd',{data:Object.assign({rows:rows.slice(i,i+200)},meta)});
+    if(!r.ok){$('#bmsg').innerHTML=`<span style="color:var(--er)">${esc(r.error)} (اتضاف ${add} قبل الخطأ)</span>`;$('#bgo').disabled=false;return;}
+    add+=r.added;dup+=r.duplicates;bad+=r.bad;S.stats=r.stats;
+  }
+  const b=await api('bootstrap'); if(b.ok){S.govs=b.govs;S.areas=b.areas;S.stats=b.stats;}
+  $('#bmsg').innerHTML=`<b style="color:var(--ok)">تمت إضافة ${add}</b> · مكرر ${dup} · مرفوض ${bad}`;
+  $('#bt').value='';$('#bgo').disabled=false;
+  const on=$('#nav .on'); if(on&&on.dataset.t==='dash')dash();
+}
 async function exportCsv(){
-  const r=await api('groups',Object.assign({},S.f,{page:1})); if(!r.ok)return toast(r.error,false);
-  const cols=['id','name','platform','url','status','verification','category','added_by','created_at'];
+  const r=await api('groups',Object.assign({},S.f,{page:1,all:true})); if(!r.ok)return toast(r.error,false);
+  const cols=['id','name','platform','url','gov_id','area_id','status','verification','category','added_by','created_at'];
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   const csv='\ufeff'+[cols.join(',')].concat(r.items.map(g=>cols.map(c=>q(g[c])).join(','))).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='groups.csv';a.click();
