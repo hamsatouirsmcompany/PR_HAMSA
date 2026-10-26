@@ -33,7 +33,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-grad
 .r2{width:860px;height:860px;top:50%;left:50%;margin:-430px 0 0 -430px;animation-direction:reverse!important;animation-duration:90s!important;border-color:#ffffff22!important}
 .lcard{position:relative;width:100%;max-width:410px;background:#fffffff2;border-radius:28px;padding:30px 30px 24px;text-align:center;box-shadow:0 30px 80px #0007;border-top:6px solid var(--g);animation:pop .8s var(--ease) backwards}
 .lcard.shake{animation:shake .5s}
-.lcard img{width:215px;max-width:80%;animation:float 5s ease-in-out infinite}
+.brandmark{display:grid;place-items:center;width:76px;height:76px;margin:0 auto 12px;border-radius:24px;background:linear-gradient(135deg,#fff7cf,#f5c518);font-size:40px;box-shadow:0 12px 30px #f5c51835;animation:float 5s ease-in-out infinite}
 .lcard h2{margin:6px 0 4px;color:var(--bd);font-size:24px;font-weight:800}
 .lcard .sub{margin:0 0 18px;color:var(--m);font-size:14px}
 .lcard>*{animation:up .7s var(--ease) backwards}
@@ -54,7 +54,7 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-grad
 #app{animation:fade .6s}
 header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px;color:#fff;background:linear-gradient(120deg,var(--bx),var(--bd) 50%,var(--b));box-shadow:0 6px 24px #163a7544}
 header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(90deg,var(--g),var(--g2),#fff3b0,var(--g2),var(--g));background-size:200% 100%;animation:shine 5s linear infinite}
-header img{height:46px;background:#fff;border-radius:14px;padding:3px 8px;box-shadow:0 4px 12px #0003;transition:.3s}header img:hover{transform:rotate(-3deg) scale(1.06)}
+header .brandmark{width:42px;height:42px;margin:0;border-radius:13px;font-size:25px;animation:none;box-shadow:none;flex:none}
 header h1{font-size:18px;margin:0;flex:1;line-height:1.25;font-weight:800;min-width:150px}header h1 small{display:block;font-size:12px;font-weight:400;color:#ffe9a0}
 #who{background:#ffffff22;border:1px solid #ffffff33;padding:5px 14px;border-radius:30px;font-size:13px}#who:empty{display:none}
 nav{display:flex;gap:8px;padding:12px 18px;overflow-x:auto;background:#ffffffd9;backdrop-filter:blur(10px);border-bottom:1px solid #e3e8f2}
@@ -117,10 +117,11 @@ table{border-collapse:collapse}td{border-bottom:1px solid #eef1f8}tr:hover td{ba
 <div id="login">
   <i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i><div class="pat"></div><i class="ring r1"></i><i class="ring r2"></i>
   <div class="lcard">
-    <img src="logo.png" alt="همسة للسياحة">
+    <div class="brandmark" aria-label="همسة للسياحة">🪬</div>
     <h2>دخول الموظفين</h2>
-    <p class="sub">أدخل كود الدخول للوصول للوحة التحكم</p>
-    <div class="fld"><span class="ic">🔒</span><input id="code" type="password" placeholder="كود الدخول" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" class="eye" onclick="eye()" aria-label="إظهار الكود">👁</button></div>
+    <p class="sub">اكتب اسم المستخدم وكلمة المرور</p>
+    <div class="fld"><span class="ic">👤</span><input id="username" placeholder="اسم المستخدم" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="fld"><span class="ic">🔒</span><input id="password" type="password" placeholder="كلمة المرور" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" class="eye" onclick="eye()" aria-label="إظهار كلمة المرور">👁</button></div>
     <button class="lbtn" id="lbtn" onclick="doLogin()"><span>دخول</span></button>
     <p id="lerr"></p>
     <div class="foot">همسة للسياحة · نظام مجموعات السوشيال</div>
@@ -128,7 +129,7 @@ table{border-collapse:collapse}td{border-bottom:1px solid #eef1f8}tr:hover td{ba
 </div>
 
 <div id="app" class="hide">
-<header><img src="logo.png" alt=""><h1>مجموعات السوشيال<small>همسة للسياحة</small></h1><span id="who"></span><button class="btn g s" onclick="openForm()">+ إضافة مجموعة</button><button class="btn s" onclick="openBulk()">+ إضافة جماعية</button><button class="btn s" onclick="logout()">خروج</button></header>
+<header><div class="brandmark" aria-hidden="true">🪬</div><h1>مجموعات السوشيال<small>همسة للسياحة</small></h1><span id="who"></span><button class="btn g s" onclick="openForm()">+ إضافة مجموعة</button><button class="btn s admin-only hide" onclick="openBulk()">+ إضافة جماعية</button><button class="btn s" onclick="logout()">خروج</button></header>
 <nav id="nav"></nav>
 <main id="view"></main>
 </div>
@@ -136,39 +137,45 @@ table{border-collapse:collapse}td{border-bottom:1px solid #eef1f8}tr:hover td{ba
 
 <script>
 // ====== غيّر السطر ده بعد ما تعمل Deploy للـ Apps Script ======
-const API = 'https://script.google.com/macros/s/AKfycbyoiOOAciOOrNxY4IHc8J6HVhXvYDmjj76IWaVCsL0Q0KbTihyTp3tXTbB9s0pI1s9j/exec';
+const API = '';
 // ===============================================================
 const PL = {facebook:'فيسبوك',whatsapp:'واتساب',telegram:'تيليجرام',instagram:'إنستجرام',tiktok:'تيك توك',youtube:'يوتيوب',other:'أخرى'};
 const $ = s => document.querySelector(s);
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let S = {code:sessionStorage.getItem('hc')||'', user:null, govs:[], areas:[], cats:[], stats:{}, f:{page:1,sort:'newest'}};
+let S = {username:'', password:'', token:sessionStorage.getItem('ht')||'', user:null, govs:[], areas:[], cats:[], stats:{}, f:{page:1,sort:'newest'}};
 
 function toast(m, ok=true){const t=$('#toast');t.textContent=m;t.style.background=ok?'linear-gradient(135deg,#1e8e4e,#27ae60)':'linear-gradient(135deg,#c0392b,#e74c3c)';t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),3500);}
 async function api(action, extra={}){
   try{
-    const r = await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,code:S.code,...extra})});
-    const j = await r.json(); if(j.auth===false&&S.user){logout();} return j;
+    const payload={action,token:S.token,username:S.username,password:S.password,...extra};
+    let j;
+    if(window.google&&google.script&&google.script.run){j=await new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).apiCall(payload));}
+    else {const r=await fetch(API||location.href,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});j=await r.json();}
+    if(j.auth===false&&S.user){logout();} return j;
   }catch(e){return {ok:false,error:'تعذر الاتصال بالسيرفر. تأكد من النت وحاول تاني.'};}
 }
 async function doLogin(){
-  const b=$('#lbtn'); S.code=$('#code').value.trim(); $('#lerr').textContent='';
-  if(!S.code) return bad('اكتب كود الدخول');
+  const b=$('#lbtn'); S.username=$('#username').value.trim(); S.password=$('#password').value; $('#lerr').textContent='';
+  if(!S.username||!S.password) return bad('اكتب اسم المستخدم وكلمة المرور');
   b.classList.add('loading'); b.disabled=true;
-  const r = await api('bootstrap'); b.classList.remove('loading'); b.disabled=false;
-  if(!r.ok) return bad(r.error);
-  sessionStorage.setItem('hc',S.code); init(r);
+  const login=await api('login');if(!login.ok){b.classList.remove('loading');b.disabled=false;return bad(login.error);}
+  S.token=login.sessionToken;S.password='';sessionStorage.setItem('ht',S.token);
+  const r=await api('bootstrap');b.classList.remove('loading');b.disabled=false;
+  if(!r.ok)return bad(r.error);init(r);
 }
 function bad(m){$('#lerr').textContent=m;const c=$('.lcard');c.classList.remove('shake');void c.offsetWidth;c.classList.add('shake');}
-function eye(){const i=$('#code');i.type=i.type==='password'?'text':'password';}
+function eye(){const i=$('#password');i.type=i.type==='password'?'text':'password';}
 function countUp(){document.querySelectorAll('.num[data-n]').forEach(el=>{const n=+el.dataset.n,t0=performance.now();(function f(t){const p=Math.min((t-t0)/900,1);el.textContent=Math.round(n*(1-Math.pow(1-p,3))).toLocaleString('en-US');if(p<1)requestAnimationFrame(f);})(t0);});}
-function logout(){sessionStorage.removeItem('hc');S.code='';location.reload();}
+function logout(){sessionStorage.removeItem('ht');S.token='';location.reload();}
 function init(r){
   Object.assign(S,{user:r.user,govs:r.govs,areas:r.areas,cats:r.cats,stats:r.stats});
   $('#login').classList.add('out');setTimeout(()=>$('#login').classList.add('hide'),520);$('#app').classList.remove('hide');$('#who').textContent=r.user.name;
+  document.querySelectorAll('.admin-only').forEach(x=>x.classList.toggle('hide',r.user.role!=='admin'));
   const tabs=[['dash','🏠 الرئيسية'],['govs','🗺️ المحافظات'],['groups','👥 كل المجموعات']];
   if(r.user.role==='admin')tabs.push(['team','📊 متابعة الموظفين'],['employees','👤 إدارة الموظفين'],['log','📋 سجل النشاط']); else tabs.unshift(['tasks','✅ مهامي اليومية']);
   $('#nav').innerHTML=tabs.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')">${t[1]}</button>`).join('');
-  go('dash');
+  if(r.user.role!=='admin'&&!window.employeeRefresh)window.employeeRefresh=setInterval(()=>{if($('#nav .on')?.dataset.t==='tasks'&&!document.activeElement.matches('input,textarea,select'))tasksPage(true);},60000);
+  go(r.user.role==='admin'?'dash':'tasks');
 }
 function go(t,opt){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
@@ -294,11 +301,11 @@ async function runBulk(){
   const rows=parseBulk($('#bt').value); if(!rows.length){$('#bmsg').textContent='مفيش روابط صالحة في النص';return;}
   const meta={gov_id:$('#bg').value,area_id:$('#ba').value,category:$('#bc').value};
   $('#bgo').disabled=true; let add=0,dup=0,bad=0;
-  for(let i=0;i<rows.length;i+=200){
-    $('#bmsg').textContent=`جاري الإضافة... ${Math.min(i+200,rows.length)} / ${rows.length}`;
-    const r=await api('bulkAdd',{data:Object.assign({rows:rows.slice(i,i+200)},meta)});
+  for(let i=0;i<rows.length;i+=5000){
+    $('#bmsg').textContent=`جاري الإضافة... ${Math.min(i+5000,rows.length)} / ${rows.length}`;
+    const r=await api('bulkAdd',{data:Object.assign({rows:rows.slice(i,i+5000)},meta)});
     if(!r.ok){$('#bmsg').innerHTML=`<span style="color:var(--er)">${esc(r.error)} (اتضاف ${add} قبل الخطأ)</span>`;$('#bgo').disabled=false;return;}
-    add+=r.added;dup+=r.duplicates;bad+=r.bad;S.stats=r.stats;
+    add+=r.added;dup+=r.duplicates;bad+=r.bad;
   }
   const b=await api('bootstrap'); if(b.ok){S.govs=b.govs;S.areas=b.areas;S.stats=b.stats;}
   $('#bmsg').innerHTML=`<b style="color:var(--ok)">تمت إضافة ${add}</b> · مكرر ${dup} · مرفوض ${bad}`;
@@ -306,31 +313,46 @@ async function runBulk(){
   const on=$('#nav .on'); if(on&&on.dataset.t==='dash')dash();
 }
 
-async function tasksPage(){
+async function tasksPage(silent=false){
   if(S.user.role==='admin')return;
-  $('#view').innerHTML='<div class="spin">جاري تحميل مهام اليوم...</div>';
+  if(!silent)$('#view').innerHTML='<div class="spin">جاري تحميل مهام اليوم...</div>';
   const r=await api('getTasks'); if(!r.ok){$('#view').textContent=r.error;return;}
+  const oldIds=new Set(S.taskIds||[]),newItems=r.items.filter(t=>!oldIds.has(t.id));if(S.taskIds&&newItems.length)toast(`وصلت لك ${newItems.length} مهمة جديدة`);S.taskIds=r.items.map(t=>t.id);
   const types={call:'📞 مكالمة',post:'📣 نشر على صفحة',find_page:'🔎 البحث عن صفحة'};
-  $('#view').innerHTML=`<div class="hero"><div><h2>مهام اليوم</h2><p>أرقام الاتصال وروابط الصفحات موزعة من مخزون المهام في الشيت.</p></div><span class="hi">✅</span></div>
-  <h3>${r.items.length} مهمة اليوم</h3><div class="grid">${r.items.map(t=>`<div class="card"><b>${types[t.type]||esc(t.type)} · ${esc(t.title)}</b><div class="mut">${S.user.role==='admin'?`الموظف: ${esc(t.employee)}<br>`:''}${esc(t.details||'')}</div><p dir="auto">${/^https?:\/\//i.test(t.target)?`<a href="${esc(t.target)}" target="_blank" rel="noopener">${esc(t.target)}</a>`:esc(t.target)}</p><select id="ts_${t.id}"><option value="pending" ${t.status==='pending'?'selected':''}>لم تبدأ</option><option value="in_progress" ${t.status==='in_progress'?'selected':''}>جاري التنفيذ</option><option value="done" ${t.status==='done'?'selected':''}>تمت</option><option value="blocked" ${t.status==='blocked'?'selected':''}>متعذرة</option></select><input id="tr_${t.id}" placeholder="النتيجة أو ملاحظات" value="${esc(t.result||'')}"><button class="btn s p" onclick="saveTask('${t.id}')">حفظ التحديث</button></div>`).join('')||'<div class="card mut">مفيش مهام متوزعة لليوم. الأدمن يضيف أرقام وصفحات في مخزون المهام.</div>'}</div>`;
+  const totals={call:50,post:15,find_page:15}, labels={call:'مكالمات',post:'نشر على صفحات',find_page:'بحث عن صفحات'};
+  const count=Object.fromEntries(Object.keys(totals).map(k=>[k,r.items.filter(t=>t.type===k&&t.status==='done').length]));
+  $('#view').innerHTML=`<div class="hero"><div><h2>مهام اليوم</h2><p>افتح المهمة من هنا، وبعد ما تخلصها علّم المربع «تم».</p></div><span class="hi">✅</span></div>
+  <div class="grid">${Object.keys(totals).map(k=>`<div class="card stat"><div class="ico">${k==='call'?'📞':k==='post'?'📣':'🔎'}</div><div><b>${count[k]} / ${totals[k]}</b><div class="mut">${labels[k]} مكتملة</div></div></div>`).join('')}</div>
+  ${count.call>=50?'<div class="bar"><button class="btn g" onclick="requestMoreCalls()">خلصت الـ50؟ اطلب 10 أرقام إضافية</button></div>':''}
+  <h3>${r.items.length} مهمة اليوم</h3><div class="grid">${r.items.map(t=>`<div class="card"><b>${types[t.type]||esc(t.type)} · ${esc(t.title)}</b><div class="mut">${esc(t.details||'')}</div><p dir="auto">${t.type==='call'&&/^\+?[0-9 ()-]{6,}$/.test(t.target)?`<a class="btn p s" href="tel:${esc(t.target.replace(/[^+0-9]/g,''))}">اتصل بالرقم ${esc(t.target)}</a>`:/^https?:\/\//i.test(t.target)?`<a class="btn p s" href="${esc(t.target)}" target="_blank" rel="noopener">افتح الصفحة</a>`:esc(t.target)}</p>${t.type==='call'?`<label>نتيجة المكالمة</label><select id="tr_${t.id}"><option value="">اختار النتيجة</option><option ${t.result==='answered'?'selected':''} value="answered">رد</option><option ${t.result==='no_answer'?'selected':''} value="no_answer">لم يرد</option><option ${t.result==='interested'?'selected':''} value="interested">مهتم</option><option ${t.result==='wrong_number'?'selected':''} value="wrong_number">رقم خطأ</option></select>`:''}<label style="display:block;margin-top:12px"><input type="checkbox" ${t.status==='done'?'checked':''} onchange="saveTask('${t.id}',this.checked,'${t.type}')"> تم</label>${t.status==='done'?'<span class="tag ok">مكتملة</span>':''}</div>`).join('')||'<div class="card mut">مفيش مهام متوزعة لليوم. المدير يحتاج يضيف أرقام وصفحات للمخزون.</div>'}</div>`;
 }
 async function addPoolTask(){const data={type:$('#pt').value,title:$('#ptitle').value.trim(),target:$('#ptarget').value.trim(),details:$('#pdetails').value.trim()};const r=await api('addTaskPool',{data});if(!r.ok)return toast(r.error,false);toast('اتضافت للمخزون');teamPage();}
-async function saveTask(id){const r=await api('updateTask',{id,patch:{status:$('#ts_'+id).value,result:$('#tr_'+id).value}});if(!r.ok)return toast(r.error,false);toast('تم تحديث المهمة');}
+async function saveTask(id,done,type){const result=$('#tr_'+id)?.value||'';if(done&&type==='call'&&!result)return toast('اختار نتيجة المكالمة الأول',false);const r=await api('updateTask',{id,patch:{status:done?'done':'pending',result}});if(!r.ok)return toast(r.error,false);toast(done?'تم تسجيل المهمة':'تم تحديث المهمة');tasksPage();}
+async function requestMoreCalls(){const r=await api('requestMoreCalls');if(!r.ok)return toast(r.error,false);toast(r.assigned?`اتضاف ${r.assigned} أرقام لمهامك`:'مفيش أرقام إضافية متاحة',!!r.assigned);tasksPage();}
 async function employeesPage(){
   $('#view').innerHTML='<div class="spin">جاري تحميل الموظفين...</div>';const r=await api('listEmployees');if(!r.ok){$('#view').textContent=r.error;return;}
   const emps=r.items.filter(e=>e.role!=='admin');
   S.employees=emps;
-  $('#view').innerHTML=`<div class="hero"><div><h2>إدارة الموظفين</h2><p>بيانات التواصل وحسابات الدخول وحالة الموظف.</p></div><button class="btn g" onclick="employeeForm()">+ موظف جديد</button></div><div class="grid">${emps.map(e=>`<div class="card"><b>${esc(e.name)}</b><span class="tag ${e.active?'ok':'bad'}">${e.active?'نشط':'موقوف'}</span><div class="mut">${esc(e.job_title||'موظف')}<br>${esc(e.phone||'بدون هاتف')}<br>${esc(e.email||'بدون بريد')}<br>${esc(e.notes||'')}</div><div class="acts"><button class="btn s" onclick="employeeForm('${e.id}')">تعديل البيانات</button><button class="btn s" onclick="changeEmployeePassword('${e.id}')">تعيين كلمة مرور</button></div></div>`).join('')||'<div class="card mut">لا يوجد موظفون مضافون بعد.</div>'}</div>`;
+  $('#view').innerHTML=`<div class="hero"><div><h2>إدارة الموظفين</h2><p>بيانات التواصل وحسابات الدخول وحالة الموظف.</p></div><button class="btn g" onclick="employeeForm()">+ موظف جديد</button></div><div class="grid">${emps.map(e=>`<div class="card"><b>${esc(e.name)}</b><span class="tag ${e.active?'ok':'bad'}">${e.active?'نشط':'موقوف'}</span><div class="mut">اسم الدخول: <b dir="ltr">${esc(e.username||'غير محدد')}</b><br>${esc(e.job_title||'موظف')}<br>${esc(e.phone||'بدون هاتف')}<br>${esc(e.email||'بدون بريد')}<br>${esc(e.notes||'')}</div><div class="acts"><button class="btn s" onclick="employeeForm('${e.id}')">تعديل البيانات</button><button class="btn s" onclick="changeEmployeePassword('${e.id}')">تعيين كلمة مرور</button></div></div>`).join('')||'<div class="card mut">لا يوجد موظفون مضافون بعد.</div>'}</div>`;
 }
-function employeeForm(id){const e=(S.employees||[]).find(x=>x.id===id)||{};modal(`<h3>${e.id?'تعديل بيانات الموظف':'إضافة موظف جديد'}</h3><label>الاسم *</label><input id="en" value="${esc(e.name||'')}"><label>المسمى الوظيفي</label><input id="ej" value="${esc(e.job_title||'')}"><label>رقم الهاتف</label><input id="ep" value="${esc(e.phone||'')}"><label>البريد الإلكتروني</label><input id="ee" type="email" value="${esc(e.email||'')}"><label>ملاحظات</label><textarea id="note">${esc(e.notes||'')}</textarea>${e.id?`<label><input id="ea" type="checkbox" ${e.active?'checked':''}> حساب نشط</label>`:'<label>كلمة المرور الأولية *</label><input id="pw" type="password" minlength="6">'}<p id="eerr" class="mut"></p><button class="btn p" onclick="saveEmployeeForm('${e.id||''}')">حفظ</button> <button class="btn" onclick="closeM()">إلغاء</button>`);}
-async function saveEmployeeForm(id){const data={id:id||undefined,name:$('#en').value.trim(),job_title:$('#ej').value.trim(),phone:$('#ep').value.trim(),email:$('#ee').value.trim(),notes:$('#note').value.trim(),active:id?$('#ea').checked:true};if(!id)data.password=$('#pw').value;const r=await api('saveEmployee',{data});if(!r.ok){$('#eerr').textContent=r.error;return;}closeM();toast('تم حفظ بيانات الموظف');employeesPage();}
-async function changeEmployeePassword(id){const password=prompt('اكتب كلمة المرور الجديدة (6 أحرف على الأقل):');if(password===null)return;const r=await api('resetEmployeePassword',{id,password});if(!r.ok)return toast(r.error,false);toast('تم تغيير كلمة المرور');}
+function employeeForm(id){const e=(S.employees||[]).find(x=>x.id===id)||{};modal(`<h3>${e.id?'تعديل بيانات الموظف':'إضافة موظف جديد'}</h3><label>الاسم *</label><input id="en" value="${esc(e.name||'')}"><label>اسم المستخدم للدخول *</label><input id="eu" value="${esc(e.username||'')}" autocomplete="off"><div class="mut">إنجليزي أو أرقام، 3 أحرف على الأقل.</div><label>المسمى الوظيفي</label><input id="ej" value="${esc(e.job_title||'')}"><label>رقم الهاتف</label><input id="ep" value="${esc(e.phone||'')}"><label>البريد الإلكتروني</label><input id="ee" type="email" value="${esc(e.email||'')}"><label>ملاحظات</label><textarea id="note">${esc(e.notes||'')}</textarea>${e.id?`<label><input id="ea" type="checkbox" ${e.active?'checked':''}> حساب نشط</label>`:'<label>كلمة المرور الأولية *</label><input id="pw" type="password" minlength="8">'}<p id="eerr" class="mut"></p><button class="btn p" onclick="saveEmployeeForm('${e.id||''}')">حفظ</button> <button class="btn" onclick="closeM()">إلغاء</button>`);}
+async function saveEmployeeForm(id){const data={id:id||undefined,name:$('#en').value.trim(),username:$('#eu').value.trim(),job_title:$('#ej').value.trim(),phone:$('#ep').value.trim(),email:$('#ee').value.trim(),notes:$('#note').value.trim(),active:id?$('#ea').checked:true};if(!id)data.password=$('#pw').value;const r=await api('saveEmployee',{data});if(!r.ok){$('#eerr').textContent=r.error;return;}closeM();toast('تم حفظ بيانات الموظف');employeesPage();}
+async function changeEmployeePassword(id){const password=prompt('اكتب كلمة المرور الجديدة (8 أحرف على الأقل):');if(password===null)return;const r=await api('resetEmployeePassword',{id,password});if(!r.ok)return toast(r.error,false);toast('تم تغيير كلمة المرور');}
 async function teamPage(){
   $('#view').innerHTML='<div class="spin">جاري تحميل متابعة اليوم...</div>';const [r,er]=await Promise.all([api('getTeamTasks'),api('listEmployees')]);if(!r.ok||!er.ok){$('#view').textContent=(r.error||er.error);return;}
   const types={call:'📞 مكالمة',post:'📣 نشر على صفحة',find_page:'🔎 البحث عن صفحة'}, labels={pending:'لم تبدأ',in_progress:'جاري التنفيذ',done:'تمت',blocked:'متعذرة'};
   const by={};er.items.filter(e=>e.role!=='admin'&&e.active).forEach(e=>by[e.name]=[]);r.items.forEach(t=>(by[t.employee]||(by[t.employee]=[])).push(t));
-  $('#view').innerHTML=`<div class="hero"><div><h2>متابعة الموظفين</h2><p>حالة مهام اليوم ونتائج التنفيذ لكل موظف.</p></div><span class="hi">📊</span></div><div class="card"><b>إضافة مهمة لمخزون التوزيع</b><p class="mut">المهمة الجديدة تدخل في التوزيع اليومي القادم.</p><div class="bar"><select id="pt"><option value="call">رقم للاتصال</option><option value="post">صفحة للنشر</option><option value="find_page">مهمة البحث عن صفحة</option></select><input id="ptitle" placeholder="عنوان المهمة"><input id="ptarget" placeholder="رقم الهاتف أو رابط الصفحة"><input id="pdetails" placeholder="تعليمات إضافية"><button class="btn p" onclick="addPoolTask()">إضافة للمخزون</button></div></div><div class="grid">${Object.entries(by).map(([name,tasks])=>{const done=tasks.filter(t=>t.status==='done').length;return `<div class="card"><h3>${esc(name)}</h3><div class="mut">أنجز ${done} من ${tasks.length}</div><div class="grid">${tasks.map(t=>`<div class="card"><b>${types[t.type]||esc(t.type)} · ${esc(t.title)}</b><span class="tag">${labels[t.status]||esc(t.status)}</span><p dir="auto">${/^https?:\/\//i.test(t.target)?`<a href="${esc(t.target)}" target="_blank" rel="noopener">${esc(t.target)}</a>`:esc(t.target)}</p><div class="mut">${esc(t.result||'لا توجد نتيجة مسجلة')} ${esc(t.details||'')}</div></div>`).join('')}</div></div>`}).join('')||'<div class="card mut">لا توجد مهام موزعة اليوم.</div>'}</div>`;
+  S.employees=er.items.filter(e=>e.role!=='admin');
+  $('#view').innerHTML=`<div class="hero"><div><h2>متابعة الموظفين</h2><p>هنا المدير يشوف إنجاز كل موظف ومهامه، من غير ما يعدّل مهام الموظف.</p></div><span class="hi">📊</span></div>
+  <div class="card"><b>إضافة مهام للمخزون</b><p class="mut">مهمة واحدة في كل سطر بالشكل: النوع | العنوان | رقم أو رابط | تعليمات. الأنواع: call أو post أو find_page.</p><textarea id="ptbulk" rows="5" dir="auto" placeholder="call | اتصال بعميل | 01000000000 | اتصل بعد الظهر&#10;post | صفحة سياحة | https://facebook.com/... | انشر العرض"></textarea><button class="btn p" onclick="bulkTasks()">إضافة المهام للمخزون</button></div>
+  <div class="card"><b>تقرير المهام</b><div class="bar"><label>من <input id="rf" type="date" value="${new Date().toISOString().slice(0,10)}"></label><label>إلى <input id="rt" type="date" value="${new Date().toISOString().slice(0,10)}"></label><select id="re"><option value="">كل الموظفين</option>${S.employees.map(e=>`<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')}</select><select id="rty"><option value="">كل أنواع المهام</option><option value="call">مكالمات</option><option value="post">نشر</option><option value="find_page">بحث صفحات</option></select><button class="btn p" onclick="loadTaskReport()">عرض التقرير</button></div><div id="reportout" class="mut">اختار المدة واضغط عرض التقرير.</div></div>
+  <h3>مهام اليوم</h3><div class="grid">${Object.entries(by).map(([name,tasks])=>{const done=tasks.filter(t=>t.status==='done').length;return `<div class="card team-employee" data-employee="${esc(name)}"><h3>${esc(name)}</h3><div class="mut team-total">أنجز ${done} من ${tasks.length}</div><div class="team-breakdown">${Object.keys(types).map(k=>`${types[k]}: ${tasks.filter(t=>t.type===k&&t.status==='done').length}/${tasks.filter(t=>t.type===k).length}`).join(' · ')}</div><details><summary>عرض المهام والنتائج</summary><div style="max-height:350px;overflow:auto">${tasks.map(t=>`<div class="msg ${t.status==='done'?'t':''}"><b>${types[t.type]||esc(t.type)} · ${esc(t.title)}</b> — ${labels[t.status]||esc(t.status)}<br><span class="mut">${esc(t.result||'لا توجد نتيجة مسجلة')}</span></div>`).join('')}</div></details></div>`}).join('')||'<div class="card mut">لا توجد مهام موزعة اليوم.</div>'}</div>`;
+  if(window.teamRefresh)clearInterval(window.teamRefresh);window.teamRefresh=setInterval(()=>{if($('#nav .on')?.dataset.t==='team'&&!document.activeElement.matches('input,textarea,select'))refreshTeamStatus();},60000);
 }
+async function refreshTeamStatus(){const r=await api('getTeamTasks');if(!r.ok)return;document.querySelectorAll('.team-employee').forEach(card=>{const tasks=r.items.filter(t=>t.employee===card.dataset.employee),done=tasks.filter(t=>t.status==='done').length;card.querySelector('.team-total').textContent=`أنجز ${done} من ${tasks.length}`;card.querySelector('.team-breakdown').textContent=['call','post','find_page'].map(k=>`${k==='call'?'مكالمات':k==='post'?'نشر':'بحث'}: ${tasks.filter(t=>t.type===k&&t.status==='done').length}/${tasks.filter(t=>t.type===k).length}`).join(' · ');});}
+async function bulkTasks(){const lines=$('#ptbulk').value.split(/\n+/).filter(x=>x.trim()),names={مكالمة:'call',اتصال:'call',نشر:'post',بحث:'find_page'},rows=[];lines.forEach(line=>{const p=line.split('|').map(x=>x.trim());rows.push({type:names[p[0]]||p[0],title:p[1],target:p[2],details:p[3]||''});});if(!rows.length)return toast('اكتب المهام الأول',false);let added=0,bad=0;for(let i=0;i<rows.length;i+=5000){const r=await api('bulkAddTasks',{rows:rows.slice(i,i+5000)});if(!r.ok)return toast(r.error,false);added+=r.added;bad+=r.bad;}toast(`اتضاف ${added} مهمة، ورفض ${bad} سطر`);$('#ptbulk').value='';}
+async function loadTaskReport(){const r=await api('getTaskReport',{from:$('#rf').value,to:$('#rt').value,employee_id:$('#re').value,type:$('#rty').value});if(!r.ok)return toast(r.error,false);$('#reportout').innerHTML=`إجمالي ${r.summary.total} · مكتمل ${r.summary.done} (${r.summary.percent}%)<div style="max-height:400px;overflow:auto"><table width="100%" cellpadding="6">${r.items.map(t=>`<tr><td>${esc(t.date)}</td><td>${esc(t.employee)}</td><td>${esc(t.type)}</td><td>${esc(t.title)}</td><td>${esc(t.status==='done'?'تم':'لم يتم')}</td><td>${esc(t.result||'')}</td><td>${t.status==='done'?`<button class="btn s" onclick="returnTask('${t.id}')">إعادة للمخزون</button>`:''}</td></tr>`).join('')}</table></div>`;}
+async function returnTask(id){if(!confirm('ترجع المهمة لمخزون التوزيع اليومي القادم؟'))return;const r=await api('returnTaskToPool',{id});if(!r.ok)return toast(r.error,false);toast('رجعت للمخزون، وهتكون متاحة في التوزيع القادم');loadTaskReport();}
 async function exportCsv(){
   const r=await api('groups',Object.assign({},S.f,{page:1,all:true})); if(!r.ok)return toast(r.error,false);
   const cols=['id','name','platform','url','gov_id','area_id','status','verification','category','added_by','created_at'];
@@ -343,7 +365,7 @@ async function logPage(){
   if(!r.ok){$('#view').innerHTML=esc(r.error);return;}
   $('#view').innerHTML=`<div class="card" style="overflow:auto"><table width="100%" cellpadding="6">${r.items.map(i=>`<tr><td class="mut">${esc(i.time)}</td><td>${esc(i.employee)}</td><td>${esc(i.action)}</td><td>${esc(i.target)}</td></tr>`).join('')}</table></div>`;
 }
-if(S.code)api('bootstrap').then(r=>r.ok?init(r):0);
+if(S.token){api('bootstrap').then(r=>r.ok?init(r):logout());}
 </script>
 </body>
 </html>
