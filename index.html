@@ -165,13 +165,13 @@ function logout(){sessionStorage.removeItem('hc');S.code='';location.reload();}
 function init(r){
   Object.assign(S,{user:r.user,govs:r.govs,areas:r.areas,cats:r.cats,stats:r.stats});
   $('#login').classList.add('out');setTimeout(()=>$('#login').classList.add('hide'),520);$('#app').classList.remove('hide');$('#who').textContent=r.user.name;
-  const tabs=[['dash','🏠 الرئيسية'],['govs','🗺️ المحافظات'],['groups','👥 كل المجموعات'],['ai','🤖 المساعد الذكي']]; if(r.user.role==='admin')tabs.push(['log','📋 سجل النشاط']);
+  const tabs=[['dash','🏠 الرئيسية'],['tasks','✅ مهامي اليومية'],['govs','🗺️ المحافظات'],['groups','👥 كل المجموعات']]; if(r.user.role==='admin')tabs.push(['log','📋 سجل النشاط']);
   $('#nav').innerHTML=tabs.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')">${t[1]}</button>`).join('');
   go('dash');
 }
 function go(t,opt){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  if(t==='dash')dash(); if(t==='govs')govsPage(); if(t==='groups'){if(opt)S.f=Object.assign({page:1,sort:'newest'},opt);groupsPage();} if(t==='log')logPage(); if(t==='ai')aiPage();
+  if(t==='dash')dash(); if(t==='tasks')tasksPage(); if(t==='govs')govsPage(); if(t==='groups'){if(opt)S.f=Object.assign({page:1,sort:'newest'},opt);groupsPage();} if(t==='log')logPage();
 }
 const gname = id => (S.govs.find(g=>g.id===id)||{}).name_ar||'';
 const aname = id => (S.areas.find(a=>a.id===id)||{}).name_ar||'';
@@ -305,35 +305,16 @@ async function runBulk(){
   const on=$('#nav .on'); if(on&&on.dataset.t==='dash')dash();
 }
 
-S.chat=[];
-const fmtMsg=t=>esc(t).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
-function aiPage(){
-  const chips=['كام جروب عندنا؟ وإيه المطلوب النهاردة؟','اعرض جروبات الإسكندرية','الجروبات اللي من غير منطقة','عايز جروبات حج وعمرة في الشرقية','الصق قايمة روابط وأنا أضيفها'];
-  $('#view').innerHTML=`<div class="card" style="animation:none"><div class="mut">اسأل أو اطلب أي حاجة: بحث في الجروبات، إحصائيات، أو الصق نص فيه روابط وأنا أضيفها. أنا مش بتصفح فيسبوك ومبألفش روابط.</div>
-  <div class="acts">${chips.map(c=>`<button class="btn s" onclick="aiQuick(this.textContent)">${esc(c)}</button>`).join('')}</div>
-  <div id="chat" style="margin:12px 0;max-height:55vh;overflow:auto"></div>
-  <div class="bar" style="margin-bottom:0"><textarea id="ai_in" rows="2" placeholder="اكتب طلبك... (Enter للإرسال، Shift+Enter سطر جديد)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"></textarea><button class="btn p" id="ai_go" onclick="aiSend()">إرسال</button></div></div>`;
-  renderChat();
+async function tasksPage(){
+  $('#view').innerHTML='<div class="spin">جاري تحميل مهام اليوم...</div>';
+  const r=await api('getTasks'); if(!r.ok){$('#view').textContent=r.error;return;}
+  const types={call:'📞 مكالمة',post:'📣 نشر على صفحة',find_page:'🔎 البحث عن صفحة'};
+  $('#view').innerHTML=`<div class="hero"><div><h2>مهام اليوم</h2><p>أرقام الاتصال وروابط الصفحات موزعة من مخزون المهام في الشيت.</p></div><span class="hi">✅</span></div>
+  ${S.user.role==='admin'?'<div class="card"><b>إضافة مهمة للمخزون</b><p class="mut">أضف رقم اتصال أو رابط صفحة أو مهمة بحث. العناصر الجديدة تتوزع تلقائياً على الموظفين في دورة المهام اليومية التالية.</p><div class="bar"><select id="pt"><option value="call">رقم للاتصال</option><option value="post">صفحة للنشر</option><option value="find_page">مهمة البحث عن صفحة</option></select><input id="ptitle" placeholder="عنوان المهمة"><input id="ptarget" placeholder="رقم الهاتف أو رابط الصفحة"><input id="pdetails" placeholder="تعليمات إضافية"><button class="btn p" onclick="addPoolTask()">إضافة للمخزون</button></div></div>':''}
+  <h3>${r.items.length} مهمة اليوم</h3><div class="grid">${r.items.map(t=>`<div class="card"><b>${types[t.type]||esc(t.type)} · ${esc(t.title)}</b><div class="mut">${S.user.role==='admin'?`الموظف: ${esc(t.employee)}<br>`:''}${esc(t.details||'')}</div><p dir="auto">${/^https?:\/\//i.test(t.target)?`<a href="${esc(t.target)}" target="_blank" rel="noopener">${esc(t.target)}</a>`:esc(t.target)}</p><select id="ts_${t.id}"><option value="pending" ${t.status==='pending'?'selected':''}>لم تبدأ</option><option value="in_progress" ${t.status==='in_progress'?'selected':''}>جاري التنفيذ</option><option value="done" ${t.status==='done'?'selected':''}>تمت</option><option value="blocked" ${t.status==='blocked'?'selected':''}>متعذرة</option></select><input id="tr_${t.id}" placeholder="النتيجة أو ملاحظات" value="${esc(t.result||'')}"><button class="btn s p" onclick="saveTask('${t.id}')">حفظ التحديث</button></div>`).join('')||'<div class="card mut">مفيش مهام متوزعة لليوم. الأدمن يضيف أرقام وصفحات في مخزون المهام.</div>'}</div>`;
 }
-function renderChat(){
-  const c=$('#chat'); if(!c)return;
-  c.innerHTML=S.chat.map(m=>`<div class="msg ${m.role==='user'?'u':m.err?'e':'a'} ${m.tmp?'t':''}"><b class="mut">${m.role==='user'?'أنت':'المساعد'}</b><div>${fmtMsg(m.content)}</div></div>`).join('');
-  c.scrollTop=c.scrollHeight;
-}
-function aiQuick(t){const i=$('#ai_in');if(i){i.value=t;aiSend();}}
-async function aiSend(){
-  const i=$('#ai_in'); const text=i.value.trim(); if(!text||$('#ai_go').disabled)return;
-  i.value=''; S.chat.push({role:'user',content:text}); S.chat.push({role:'assistant',content:'جاري التفكير...',tmp:true}); renderChat(); $('#ai_go').disabled=true;
-  const hist=S.chat.filter(m=>!m.tmp&&!m.err).map(m=>({role:m.role,content:m.content}));
-  const r=await api('ai',{messages:hist});
-  S.chat=S.chat.filter(m=>!m.tmp);
-  if(!r.ok) S.chat.push({role:'assistant',content:r.error||'حصل خطأ',err:true});
-  else {
-    S.chat.push({role:'assistant',content:r.reply});
-    if((r.actions||[]).some(a=>a.tool==='add_groups'&&a.result&&a.result.added>0)){ const b=await api('bootstrap'); if(b.ok){S.govs=b.govs;S.areas=b.areas;S.stats=b.stats;} toast('تمت الإضافة'); }
-  }
-  renderChat(); const g=$('#ai_go'); if(g)g.disabled=false;
-}
+async function addPoolTask(){const data={type:$('#pt').value,title:$('#ptitle').value.trim(),target:$('#ptarget').value.trim(),details:$('#pdetails').value.trim()};const r=await api('addTaskPool',{data});if(!r.ok)return toast(r.error,false);toast('اتضافت للمخزون');tasksPage();}
+async function saveTask(id){const r=await api('updateTask',{id,patch:{status:$('#ts_'+id).value,result:$('#tr_'+id).value}});if(!r.ok)return toast(r.error,false);toast('تم تحديث المهمة');}
 async function exportCsv(){
   const r=await api('groups',Object.assign({},S.f,{page:1,all:true})); if(!r.ok)return toast(r.error,false);
   const cols=['id','name','platform','url','gov_id','area_id','status','verification','category','added_by','created_at'];
