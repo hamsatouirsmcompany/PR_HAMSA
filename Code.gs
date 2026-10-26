@@ -198,7 +198,7 @@ function queryGroups(q) {
   ['gov_id','area_id','platform','status','verification','added_by'].forEach(k => { if (q[k]) list = list.filter(g => String(g[k])===q[k]); });
   const s = q.sort||'newest';
   list.sort((a,b)=> s==='oldest' ? (a.created_at>b.created_at?1:-1) : s==='name' ? String(a.name).localeCompare(String(b.name),'ar') : s==='updated' ? (a.updated_at<b.updated_at?1:-1) : (a.created_at<b.created_at?1:-1));
-  const size = 24, page = Math.max(1, q.page||1), total = list.length;
+  const total = list.length;
   return {total, page, size, items: list.slice((page-1)*size, page*size)};
 }
 
