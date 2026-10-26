@@ -10,7 +10,7 @@ const SCHEMA = {
   Groups: ['id','name','platform','url','gov_id','area_id','sub_area','category','description','added_by','created_at','updated_at','verification','status','notes','members','is_demo'],
   Governorates: ['id','name_ar','name_en','active'],
   Areas: ['id','gov_id','parent_id','name_ar','name_en','type','active'],
-  Employees: ['id','name','role','code_hash','active'],
+  Employees: ['id','name','role','code_hash','active','phone','email','job_title','notes'],
   Categories: ['id','name_ar'],
   ActivityLog: ['time','employee','action','target','details'],
   Settings: ['key','value'],
@@ -32,6 +32,10 @@ function setup() {
   Object.keys(SCHEMA).forEach(n => {
     let sh = ss.getSheetByName(n) || ss.insertSheet(n);
     if (sh.getLastRow() === 0) { sh.getRange(1,1,1,SCHEMA[n].length).setValues([SCHEMA[n]]).setFontWeight('bold'); sh.setFrozenRows(1); }
+    else if(n==='Employees') {
+      const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+      SCHEMA.Employees.forEach(col=>{if(h.indexOf(col)<0){sh.getRange(1,sh.getLastColumn()+1).setValue(col);h.push(col);}});
+    }
   });
   const d = ss.getSheetByName('Sheet1'); if (d && d.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(d);
   const g = ss.getSheetByName('Governorates');
@@ -113,7 +117,11 @@ function doPost(e) {
         if (add.length) sheet('Areas').getRange(sheet('Areas').getLastRow()+1,1,add.length,7).setValues(add);
         log(emp.name,'importAreas','',add.length+' added'); lock.releaseLock(); return out({ok:true,added:add.length,rejected:bad}); }
       case 'activity': { if (!isAdmin) return out({ok:false,error:'مش مسموح'}); return out({ok:true, items: rows('ActivityLog').slice(-200).reverse()}); }
-      case 'getTasks': { generateDailyTasks(); return out({ok:true,items:taskRowsFor(emp,isAdmin)}); }
+      case 'getTasks': { if (isAdmin) return out({ok:false,error:'المهام اليومية مخصصة للموظفين'}); generateDailyTasks(); return out({ok:true,items:taskRowsFor(emp,false)}); }
+      case 'getTeamTasks': { if (!isAdmin) return out({ok:false,error:'مش مسموح'}); generateDailyTasks(); return out({ok:true,items:taskRowsFor(emp,true)}); }
+      case 'listEmployees': { if (!isAdmin) return out({ok:false,error:'مش مسموح'}); return out({ok:true,items:rows('Employees').map(e=>({id:e.id,name:e.name,role:e.role,active:String(e.active).toUpperCase()==='TRUE',phone:e.phone||'',email:e.email||'',job_title:e.job_title||'',notes:e.notes||''}))}); }
+      case 'saveEmployee': { if (!isAdmin) return out({ok:false,error:'مش مسموح'}); const r=saveEmployee(req.data||{}); return out(r); }
+      case 'resetEmployeePassword': { if (!isAdmin) return out({ok:false,error:'مش مسموح'}); const r=resetEmployeePassword(req.id,req.password); return out(r); }
       case 'addTaskPool': { if (!isAdmin) return out({ok:false,error:'مش مسموح'}); const d=req.data||{}; if(!d.type||!d.title||!d.target)return out({ok:false,error:'النوع والعنوان والرقم أو الرابط مطلوبين'}); const id='P'+Utilities.getUuid().slice(0,8); sheet('TaskPool').appendRow([id,d.type,d.title,d.target,d.details||'',true,new Date().toISOString()]); log(emp.name,'addTaskPool',id,d.title); return out({ok:true,id}); }
       case 'updateTask': { lock.waitLock(15000); const r=updateDailyTask(req.id,req.patch||{},emp,isAdmin); lock.releaseLock(); return out(r); }
       default: return out({ok:false,error:'أمر غير معروف'});
@@ -208,6 +216,22 @@ function updateDailyTask(id,patch,emp,isAdmin){
   sh.getRange(idx+1,h.indexOf('result')+1).setValue(String(patch.result||'').slice(0,1000));
   sh.getRange(idx+1,h.indexOf('updated_at')+1).setValue(new Date().toISOString());
   log(emp.name,'updateTask',id,status); return {ok:true};
+}
+function saveEmployee(d){
+  const sh=sheet('Employees'),v=sh.getDataRange().getValues(),h=v[0],name=String(d.name||'').trim();
+  if(!name)return {ok:false,error:'اسم الموظف مطلوب'};
+  let idx=d.id?v.findIndex((r,i)=>i>0&&r[0]===d.id):-1, id;
+  if(d.id&&idx<1)return {ok:false,error:'الموظف غير موجود'};
+  if(!d.id){const password=String(d.password||'').trim();if(password.length<6)return {ok:false,error:'كلمة المرور لازم تكون 6 أحرف على الأقل'};if(v.slice(1).some(r=>String(r[h.indexOf('code_hash')])===hash(password)))return {ok:false,error:'كلمة المرور مستخدمة لحساب آخر، اختار كلمة مختلفة'};id='e'+Utilities.getUuid().slice(0,8);const row=SCHEMA.Employees.map(k=>({id,name,role:'employee',code_hash:hash(password),active:true,phone:String(d.phone||'').trim(),email:String(d.email||'').trim(),job_title:String(d.job_title||'').trim(),notes:String(d.notes||'').trim()}[k]??''));sh.appendRow(row);log('المدير','createEmployee',id,name);return {ok:true,id};}
+  id=d.id; const fields={name,phone:String(d.phone||'').trim(),email:String(d.email||'').trim(),job_title:String(d.job_title||'').trim(),notes:String(d.notes||'').trim(),active:d.active===false?false:true};
+  Object.keys(fields).forEach(k=>{const c=h.indexOf(k);if(c>=0)sh.getRange(idx+1,c+1).setValue(fields[k]);});log('المدير','updateEmployee',id,name);return {ok:true,id};
+}
+function resetEmployeePassword(id,password){
+  const p=String(password||'').trim();if(p.length<6)return {ok:false,error:'كلمة المرور لازم تكون 6 أحرف على الأقل'};
+  const sh=sheet('Employees'),v=sh.getDataRange().getValues(),h=v[0],idx=v.findIndex((r,i)=>i>0&&r[0]===id);
+  if(idx<1||v[idx][h.indexOf('role')]==='admin')return {ok:false,error:'الموظف غير موجود'};
+  if(v.some((r,i)=>i>0&&i!==idx&&String(r[h.indexOf('code_hash')])===hash(p)))return {ok:false,error:'كلمة المرور مستخدمة لحساب آخر، اختار كلمة مختلفة'};
+  sh.getRange(idx+1,h.indexOf('code_hash')+1).setValue(hash(p));log('المدير','resetEmployeePassword',id);return {ok:true};
 }
 
 /* ---------- لو الكود بيطلع غلط: غيّر الكود هنا وشغّل الدالة دي ---------- */
